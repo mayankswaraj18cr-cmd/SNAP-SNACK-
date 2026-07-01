@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SnapStack - AI Expense Tracker</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0c0d10;
+    --surface: #16171c;
+    --surface2: #1e2026;
+    --border: #2a2c34;
+    --accent: #ffb347;
+    --accent2: #ffd699;
+    --text: #ededf2;
+    --muted: #75788a;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; position: relative; }
+
+  /* TOPBAR */
+  .topbar {
+    padding: 14px 16px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .topbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .tag {
+    background: rgba(255,179,71,0.15);
+    color: var(--accent2);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+
+  .status-dot { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+  .dot.connected { background: var(--green); }
+
+  .settings-row {
+    display: flex;
+    gap: 6px;
+  }
+  .url-input, .model-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    outline: none;
+    flex: 1;
+    min-width: 0;
+  }
+  .connect-btn {
+    background: var(--accent);
+    color: #1a1200;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* SUMMARY CARDS */
+  .summary-strip {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+  .summary-strip::-webkit-scrollbar { display: none; }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    min-width: 110px;
+    flex-shrink: 0;
+  }
+  .summary-val { font-size: 19px; font-weight: 800; color: var(--accent2); }
+  .summary-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* MAIN SCROLL AREA */
+  .main-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px 100px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .main-scroll::-webkit-scrollbar { display: none; }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    margin: 16px 0 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .clear-link { color: var(--accent2); font-size: 10px; font-weight: 600; }
+
+  /* EXPENSE CARD */
+  .expense-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .expense-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .expense-info { flex: 1; min-width: 0; }
+  .expense-merchant { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .expense-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .expense-amount { font-size: 14px; font-weight: 700; flex-shrink: 0; }
+
+  .expense-delete {
+    background: none; border: none; color: var(--muted);
+    font-size: 14px; padding: 4px; flex-shrink: 0;
+  }
+
+  .empty-state { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 12px; line-height: 1.7; }
+  .empty-state .big { font-size: 32px; margin-bottom: 10px; }
+
+  /* BOTTOM CAPTURE BAR */
+  .capture-bar {
+    position: fixed;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    display: flex;
+    gap: 10px;
+    z-index: 100;
+  }
+
+  .capture-btn {
+    flex: 1;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #1a1200;
+    border: none;
+    padding: 13px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .manual-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 13px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+
+  #cameraInput { display: none; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 480px;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 14px;
+  }
+
+  .modal h3 { font-size: 16px; margin-bottom: 14px; color: var(--accent2); }
+
+  .preview-img {
+    width: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+  }
+
+  .form-group { margin-bottom: 12px; }
+  .form-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; display: block; font-weight: 700; }
+  .form-input, .form-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+
+  .row-2 { display: flex; gap: 10px; }
+  .row-2 > div { flex: 1; }
+
+  .modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .btn-cancel {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  .btn-save {
+    flex: 2;
+    background: var(--accent);
+    border: none;
+    color: #1a1200;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .ai-status-box {
+    background: rgba(255,179,71,0.08);
+    border: 1px solid rgba(255,179,71,0.25);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 12px;
+    margin-bottom: 14px;
+    color: var(--text);
+    text-align: center;
+  }
+
+  .category-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chip {
+    padding: 6px 11px;
+    border-radius: 16px;
+    font-size: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .chip.active { background: var(--accent); color: #1a1200; border-color: var(--accent); font-weight: 700; }
+
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 12px;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  /* AI INSIGHT TAB */
+  .insight-card {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .insight-btn {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin: 4px 0 14px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div class="logo">
+      <div class="logo-icon">&#128176;</div>
+      SnapStack
+      <span class="tag">OFFLINE AI</span>
+    </div>
+    <div class="status-dot"><div class="dot" id="statusDot"></div><span id="statusText">Offline</span></div>
+  </div>
+  <div class="settings-row">
+    <input class="url-input" id="ollamaUrl" value="http://localhost:11434" placeholder="Ollama URL">
+    <select class="model-select" id="modelSelect">
+      <option value="llava">llava (vision)</option>
+      <option value="llama3.2-vision">llama3.2-vision</option>
+      <option value="bakllava">bakllava</option>
+    </select>
+    <button class="connect-btn" onclick="checkOllama()">Connect</button>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="summary-card">
+    <div class="summary-val" id="totalSpend">$0</div>
+    <div class="summary-label">Total Spent</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-val" id="totalCount">0</div>
+    <div class="summary-label">Receipts</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-val" id="avgSpend">$0</div>
+    <div class="summary-label">Avg / Receipt</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-val" id="topCat">-</div>
+    <div class="summary-label">Top Category</div>
+  </div>
+</div>
+
+<div class="main-scroll">
+  <button class="insight-btn" onclick="runInsight()">&#129504; Get AI Spending Insight</button>
+  <div id="insightBox"></div>
+
+  <div class="section-title">
+    Recent Expenses
+    <span class="clear-link" onclick="clearAll()">Clear All</span>
+  </div>
+  <div id="expenseList">
+    <div class="empty-state">
+      <div class="big">&#128247;</div>
+      No expenses yet.<br>Scan a receipt or add manually to get started.
+    </div>
+  </div>
+</div>
+
+<div class="capture-bar">
+  <button class="capture-btn" onclick="document.getElementById('cameraInput').click()">&#128247; Scan Receipt</button>
+  <button class="manual-btn" onclick="openManualModal()">+</button>
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="onImageSelected(event)">
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="expenseModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="modalTitle">Add Expense</h3>
+    <img id="previewImg" class="preview-img" style="display:none;">
+    <div id="aiStatusBox" style="display:none;" class="ai-status-box">Analyzing receipt...</div>
+    <div class="form-group">
+      <label class="form-label">Merchant</label>
+      <input class="form-input" id="merchantInput" placeholder="e.g. Whole Foods">
+    </div>
+    <div class="row-2">
+      <div class="form-group">
+        <label class="form-label">Amount</label>
+        <input class="form-input" id="amountInput" type="number" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" id="dateInput" type="date">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <div class="category-chips" id="categoryChips"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveExpense()">Save Expense</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var expenses = JSON.parse(localStorage.getItem('ss_expenses') || '[]');
+var ollamaConnected = false;
+var editingImage = null;
+var selectedCategory = 'Food';
+
+var categories = ['Food','Groceries','Transport','Shopping','Bills','Health','Entertainment','Other'];
+var catIcons = {Food:'🍔',Groceries:'🛒',Transport:'🚗',Shopping:'🛍️',Bills:'📄',Health:'💊',Entertainment:'🎬',Other:'📦'};
+var catColors = {
+  Food:'#f87171', Groceries:'#4ade80', Transport:'#60a5fa', Shopping:'#ffb347',
+  Bills:'#a78bfa', Health:'#5eead4', Entertainment:'#f472b6', Other:'#75788a'
+};
+
+window.onload = function() {
+  document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+  renderCategoryChips();
+  renderExpenses();
+  updateSummary();
+  checkOllama();
+};
+
+async function checkOllama() {
+  var url = document.getElementById('ollamaUrl').value.trim();
+  try {
+    var r = await fetch(url + '/api/tags');
+    if (r.ok) {
+      ollamaConnected = true;
+      document.getElementById('statusDot').className = 'dot connected';
+      document.getElementById('statusText').textContent = 'Connected';
+      showToast('Ollama connected');
+    }
+  } catch(e) {
+    ollamaConnected = false;
+    document.getElementById('statusDot').className = 'dot';
+    document.getElementById('statusText').textContent = 'Offline';
+  }
+}
+
+async function callOllamaVision(prompt, base64Image) {
+  var url = document.getElementById('ollamaUrl').value.trim();
+  var model = document.getElementById('modelSelect').value;
+  var r = await fetch(url + '/api/generate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({model: model, prompt: prompt, images: [base64Image], stream: false})
+  });
+  if (!r.ok) throw new Error('Ollama error');
+  var data = await r.json();
+  return data.response;
+}
+
+async function callOllama(prompt) {
+  var url = document.getElementById('ollamaUrl').value.trim();
+  var model = document.getElementById('modelSelect').value;
+  var r = await fetch(url + '/api/generate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({model: model, prompt: prompt, stream: false})
+  });
+  if (!r.ok) throw new Error('Ollama error');
+  var data = await r.json();
+  return data.response;
+}
+
+function escHtml(s) {
+  return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ---- IMAGE CAPTURE + AI EXTRACTION ----
+function onImageSelected(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var dataUrl = e.target.result;
+    editingImage = dataUrl.split(',')[1];
+    openManualModal();
+    document.getElementById('previewImg').src = dataUrl;
+    document.getElementById('previewImg').style.display = 'block';
+    extractReceiptData(editingImage);
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+async function extractReceiptData(base64Image) {
+  if (!ollamaConnected) {
+    showToast('Connect to Ollama first — enter details manually');
+    return;
+  }
+  var box = document.getElementById('aiStatusBox');
+  box.style.display = 'block';
+  box.textContent = 'Analyzing receipt with vision model...';
+
+  var prompt = 'Look at this receipt image. Extract the merchant name, total amount, and best category ' +
+    '(one of: Food, Groceries, Transport, Shopping, Bills, Health, Entertainment, Other). ' +
+    'Respond ONLY with valid JSON, no markdown: {"merchant":"name","amount":12.34,"category":"Food"}';
+
+  try {
+    var result = await callOllamaVision(prompt, base64Image);
+    var cleaned = result.replace(/```json|```/g, '').trim();
+    var start = cleaned.indexOf('{');
+    var end = cleaned.lastIndexOf('}');
+    cleaned = cleaned.substring(start, end + 1);
+    var data = JSON.parse(cleaned);
+    document.getElementById('merchantInput').value = data.merchant || '';
+    document.getElementById('amountInput').value = data.amount || '';
+    if (categories.includes(data.category)) {
+      selectedCategory = data.category;
+      renderCategoryChips();
+    }
+    box.textContent = 'Receipt analyzed. Review and save.';
+    setTimeout(function(){ box.style.display = 'none'; }, 2000);
+  } catch(e) {
+    box.textContent = 'Could not auto-extract. Enter details manually below.';
+  }
+}
+
+// ---- MANUAL MODAL ----
+function openManualModal() {
+  editingImage = editingImage || null;
+  document.getElementById('modalTitle').textContent = 'Add Expense';
+  if (!editingImage) {
+    document.getElementById('previewImg').style.display = 'none';
+    document.getElementById('merchantInput').value = '';
+    document.getElementById('amountInput').value = '';
+    document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+    selectedCategory = 'Food';
+    renderCategoryChips();
+  }
+  document.getElementById('aiStatusBox').style.display = 'none';
+  document.getElementById('expenseModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('expenseModal').classList.remove('show');
+  editingImage = null;
+}
+
+function renderCategoryChips() {
+  document.getElementById('categoryChips').innerHTML = categories.map(function(c) {
+    return '<div class="chip' + (c === selectedCategory ? ' active' : '') + '" onclick="selectCategory(\'' + c + '\')">' +
+      catIcons[c] + ' ' + c + '</div>';
+  }).join('');
+}
+
+function selectCategory(c) {
+  selectedCategory = c;
+  renderCategoryChips();
+}
+
+function saveExpense() {
+  var merchant = document.getElementById('merchantInput').value.trim();
+  var amount = parseFloat(document.getElementById('amountInput').value);
+  var date = document.getElementById('dateInput').value;
+  if (!merchant) { showToast('Merchant name required'); return; }
+  if (!amount || amount <= 0) { showToast('Valid amount required'); return; }
+
+  expenses.unshift({
+    id: Date.now().toString(),
+    merchant: merchant,
+    amount: amount,
+    date: date,
+    category: selectedCategory
+  });
+  localStorage.setItem('ss_expenses', JSON.stringify(expenses));
+  renderExpenses();
+  updateSummary();
+  closeModal();
+  showToast('Expense saved');
+}
+
+function deleteExpense(id, event) {
+  event.stopPropagation();
+  expenses = expenses.filter(function(e){return e.id !== id;});
+  localStorage.setItem('ss_expenses', JSON.stringify(expenses));
+  renderExpenses();
+  updateSummary();
+  showToast('Deleted');
+}
+
+function clearAll() {
+  if (!confirm('Clear all expenses?')) return;
+  expenses = [];
+  localStorage.setItem('ss_expenses', '[]');
+  renderExpenses();
+  updateSummary();
+  showToast('Cleared');
+}
+
+function renderExpenses() {
+  var list = document.getElementById('expenseList');
+  if (expenses.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="big">&#128247;</div>No expenses yet.<br>Scan a receipt or add manually to get started.</div>';
+    return;
+  }
+  list.innerHTML = expenses.map(function(e) {
+    var color = catColors[e.category] || catColors.Other;
+    return '<div class="expense-card">' +
+      '<div class="expense-icon" style="background:' + color + '22;color:' + color + ';">' + (catIcons[e.category] || '📦') + '</div>' +
+      '<div class="expense-info">' +
+        '<div class="expense-merchant">' + escHtml(e.merchant) + '</div>' +
+        '<div class="expense-meta">' + e.category + ' &middot; ' + formatDate(e.date) + '</div>' +
+      '</div>' +
+      '<div class="expense-amount">$' + e.amount.toFixed(2) + '</div>' +
+      '<button class="expense-delete" onclick="deleteExpense(\'' + e.id + '\',event)">&#10005;</button>' +
+    '</div>';
+  }).join('');
+}
+
+function formatDate(d) {
+  var date = new Date(d + 'T00:00:00');
+  return date.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function updateSummary() {
+  var total = expenses.reduce(function(s,e){return s + e.amount;}, 0);
+  document.getElementById('totalSpend').textContent = '$' + total.toFixed(0);
+  document.getElementById('totalCount').textContent = expenses.length;
+  document.getElementById('avgSpend').textContent = '$' + (expenses.length ? (total/expenses.length).toFixed(0) : '0');
+
+  var catTotals = {};
+  expenses.forEach(function(e){ catTotals[e.category] = (catTotals[e.category]||0) + e.amount; });
+  var topCat = Object.keys(catTotals).sort(function(a,b){return catTotals[b]-catTotals[a];})[0];
+  document.getElementById('topCat').textContent = topCat || '-';
+}
+
+async function runInsight() {
+  if (!ollamaConnected) { showToast('Connect to Ollama first'); return; }
+  if (expenses.length === 0) { showToast('Add some expenses first'); return; }
+  var box = document.getElementById('insightBox');
+  box.innerHTML = '<div class="insight-card">Analyzing your spending patterns...</div>';
+
+  var summary = expenses.slice(0, 20).map(function(e) {
+    return e.merchant + ': $' + e.amount.toFixed(2) + ' (' + e.category + ', ' + e.date + ')';
+  }).join('\n');
+
+  var prompt = 'Analyze this list of expenses and give the user: 1) one observation about their spending pattern, ' +
+    '2) one area where they could save money, 3) one encouraging note. Keep it concise, 4-5 sentences total.\n\n' + summary;
+
+  try {
+    var result = await callOllama(prompt);
+    box.innerHTML = '<div class="insight-card">' + escHtml(result) + '</div>';
+  } catch(e) {
+    box.innerHTML = '<div class="insight-card">Error: ' + escHtml(e.message) + '</div>';
+  }
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');}, 2200);
+}
+
+document.getElementById('expenseModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
